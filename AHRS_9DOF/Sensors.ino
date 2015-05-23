@@ -134,7 +134,7 @@ void Read_Gyro()
   gyro[2] = gyroscope.g.z;
 }
 
-#include <BMP085.h>
+#include <Adafruit_BMP085.h>
 
 Adafruit_BMP085 press;
 

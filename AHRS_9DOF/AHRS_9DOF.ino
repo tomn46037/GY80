@@ -61,6 +61,24 @@
 
 const int sdChipSelect = 4;
 
+File dataFile;
+
+// tomn - defining the on disk data structure
+
+struct AHRS_Data {
+  
+  unsigned long current_millis;
+  float euler_Yaw;
+  float euler_Pitch;
+  float euler_Roll;
+  
+  float temperature;
+  float pressure;
+  float altitude;
+  
+} fileData;
+
+
 // SENSOR CALIBRATION
 /*****************************************************************/
 // How to calibrate? Read the tutorial at http://dev.qu.tu-berlin.de/projects/sf-razor-9dof-ahrs
@@ -310,8 +328,9 @@ void setup()
     // don't do anything more:
     return;
   }
-  Serial.println("card initialized.");
-  
+
+
+    
 }
 
 // Main loop
@@ -336,28 +355,47 @@ void loop()
     Drift_correction();
     Euler_angles();
     
-    Serial.print(millis());       Serial.print(";");    
+    // Need to be consistent with debug output and the binary file.
+    unsigned long current_millis = millis();
+    
+    /* 
+    Serial.print(current_millis);       Serial.print(";");    
     Serial.print(TO_DEG(yaw));    Serial.print(";");
     Serial.print(TO_DEG(pitch));  Serial.print(";");
     Serial.print(TO_DEG(roll));   Serial.print(";");
     Serial.print(temperature);    Serial.print(";");
     Serial.print(pressure);       Serial.print(";");
     Serial.print(altitude);       Serial.println();
+    */
     
     // open the file. note that only one file can be open at a time,
     // so you have to close this one before opening another.
-    File dataFile = SD.open("datalog.txt", FILE_WRITE);
+    dataFile = SD.open("datalog.bin", FILE_WRITE);
 
     // if the file is available, write to it:
     if (dataFile) {
       
-      dataFile.print(millis());       dataFile.print(";");    
-      dataFile.print(TO_DEG(yaw));    dataFile.print(";");
-      dataFile.print(TO_DEG(pitch));  dataFile.print(";");
-      dataFile.print(TO_DEG(roll));   dataFile.print(";");
-      dataFile.print(temperature);    dataFile.print(";");
-      dataFile.print(pressure);       dataFile.print(";");
-      dataFile.print(altitude);       dataFile.println();
+      // Yes, I know this is horribly inefficient.  I will clean it up later.
+      
+      fileData.current_millis = current_millis;
+      
+      fileData.euler_Yaw = TO_DEG(yaw);
+      fileData.euler_Pitch = TO_DEG(pitch);
+      fileData.euler_Roll = TO_DEG(roll);
+      
+      fileData.temperature = temperature;
+      fileData.pressure = pressure;
+      fileData.altitude = altitude;
+      
+      dataFile.write((byte *) &fileData, sizeof(fileData));
+      
+      // dataFile.print(millis());       dataFile.print(";");    
+      // dataFile.print(TO_DEG(yaw));    dataFile.print(";");
+      // dataFile.print(TO_DEG(pitch));  dataFile.print(";");
+      // dataFile.print(TO_DEG(roll));   dataFile.print(";");
+      // dataFile.print(temperature);    dataFile.print(";");
+      // dataFile.print(pressure);       dataFile.print(";");
+      // dataFile.print(altitude);       dataFile.println();
       
       dataFile.close();
 

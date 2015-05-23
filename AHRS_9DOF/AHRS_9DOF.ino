@@ -55,6 +55,12 @@
 // Code is tuned for 20ms, so better leave it like that
 #define OUTPUT_DATA_INTERVAL 20  // in milliseconds
 
+// SD Card functions
+#include <SPI.h>
+#include <SD.h>
+
+const int sdChipSelect = 4;
+
 // SENSOR CALIBRATION
 /*****************************************************************/
 // How to calibrate? Read the tutorial at http://dev.qu.tu-berlin.de/projects/sf-razor-9dof-ahrs
@@ -295,6 +301,17 @@ void setup()
   // Read sensors, init DCM algorithm
   delay(20);  // Give sensors enough time to collect data
   reset_sensor_fusion();
+  
+  Serial.print("Initializing SD card...");
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(sdChipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  Serial.println("card initialized.");
+  
 }
 
 // Main loop
@@ -319,12 +336,35 @@ void loop()
     Drift_correction();
     Euler_angles();
     
-    
+    Serial.print(millis());       Serial.print(";");    
     Serial.print(TO_DEG(yaw));    Serial.print(";");
     Serial.print(TO_DEG(pitch));  Serial.print(";");
     Serial.print(TO_DEG(roll));   Serial.print(";");
     Serial.print(temperature);    Serial.print(";");
     Serial.print(pressure);       Serial.print(";");
     Serial.print(altitude);       Serial.println();
+    
+    // open the file. note that only one file can be open at a time,
+    // so you have to close this one before opening another.
+    File dataFile = SD.open("datalog.txt", FILE_WRITE);
+
+    // if the file is available, write to it:
+    if (dataFile) {
+      
+      dataFile.print(millis());       dataFile.print(";");    
+      dataFile.print(TO_DEG(yaw));    dataFile.print(";");
+      dataFile.print(TO_DEG(pitch));  dataFile.print(";");
+      dataFile.print(TO_DEG(roll));   dataFile.print(";");
+      dataFile.print(temperature);    dataFile.print(";");
+      dataFile.print(pressure);       dataFile.print(";");
+      dataFile.print(altitude);       dataFile.println();
+      
+      dataFile.close();
+
+    }
+    // if the file isn't open, pop up an error:
+    else {
+      Serial.println("error opening datalog.txt");
+    }
   }
 }

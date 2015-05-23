@@ -16,7 +16,8 @@ later after the flight.  This data will be logged to an SD card.
 
 
 
-Required Libraries - these are the libraries that I used.
+Required Libraries
+==================
 
 This is the library for the Gyro -
 https://github.com/pololu/l3g4200d-arduino

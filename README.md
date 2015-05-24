@@ -6,12 +6,13 @@ Arduino/Processing sketch for GY80 9DOF AHRS
 
 
 
-Data logging to SD card
-=======================
+Data logging to UDP server
+==========================
 
-I am wanting to log this data to an SD card so it can be reviewed
-later after the flight.  This data will be logged to an SD card.
-
+SD Cards only got me about 17hz.  I tried moving this over to UDP
+packets with an Adafruit CC3000 wifi shield.  This got me up to
+almost 24hz.  Still not quite where I want to be.  I suspect I need
+to try a different micro.
 
 
 

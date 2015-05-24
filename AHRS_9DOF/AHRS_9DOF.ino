@@ -55,6 +55,43 @@
 // Code is tuned for 20ms, so better leave it like that
 #define OUTPUT_DATA_INTERVAL 20  // in milliseconds
 
+// tomn - adding CC3000
+#include <Adafruit_CC3000.h>
+#include <ccspi.h>
+#include <SPI.h>
+
+// These are the interrupt and control pins
+#define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
+// These can be any two pins
+#define ADAFRUIT_CC3000_VBAT  5
+#define ADAFRUIT_CC3000_CS    10
+// Use hardware SPI for the remaining pins
+// On an UNO, SCK = 13, MISO = 12, and MOSI = 11
+Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
+                                         SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
+
+#define WLAN_SSID       "WIFI_SSID"        // cannot be longer than 32 characters!
+#define WLAN_PASS       "WIFI_PASSWORD"
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+#define WLAN_SECURITY   WLAN_SEC_WPA2
+
+Adafruit_CC3000_Client client;
+
+// tomn - defining the on disk data structure
+
+struct AHRS_Data {
+  
+  unsigned long current_millis;
+  float euler_Yaw;
+  float euler_Pitch;
+  float euler_Roll;
+  
+  float temperature;
+  float pressure;
+  float altitude;
+  
+} fileData;
+
 // SENSOR CALIBRATION
 /*****************************************************************/
 // How to calibrate? Read the tutorial at http://dev.qu.tu-berlin.de/projects/sf-razor-9dof-ahrs
@@ -278,6 +315,31 @@ void ApplySensorMapping()
     Gyro_Vector[2] *= GYRO_Z_SCALE;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Tries to read the IP address and other connection details
+*/
+/**************************************************************************/
+bool displayConnectionDetails(void)
+{
+  uint32_t ipAddress, netmask, gateway, dhcpserv, dnsserv;
+  
+  if(!cc3000.getIPAddress(&ipAddress, &netmask, &gateway, &dhcpserv, &dnsserv))
+  {
+    Serial.println(F("Unable to retrieve the IP Address!\r\n"));
+    return false;
+  }
+  else
+  {
+    Serial.print(F("\nIP Addr: ")); cc3000.printIPdotsRev(ipAddress);
+    Serial.print(F("\nNetmask: ")); cc3000.printIPdotsRev(netmask);
+    Serial.print(F("\nGateway: ")); cc3000.printIPdotsRev(gateway);
+    Serial.print(F("\nDHCPsrv: ")); cc3000.printIPdotsRev(dhcpserv);
+    Serial.print(F("\nDNSserv: ")); cc3000.printIPdotsRev(dnsserv);
+    Serial.println();
+    return true;
+  }
+}
 
 void setup()
 {
@@ -295,6 +357,55 @@ void setup()
   // Read sensors, init DCM algorithm
   delay(20);  // Give sensors enough time to collect data
   reset_sensor_fusion();
+  
+  Serial.println(F("\nInitialising the CC3000 ..."));
+  if (!cc3000.begin()) {
+    Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
+    for(;;);
+  }
+
+  Serial.println(F("\nDeleting old connection profiles"));
+  if (!cc3000.deleteProfiles()) {
+    Serial.println(F("Failed!"));
+    while(1);
+  }
+
+  /* Attempt to connect to an access point */
+  char *ssid = WLAN_SSID;             /* Max 32 chars */
+  Serial.print(F("\nAttempting to connect to ")); Serial.println(ssid);
+  
+  /* NOTE: Secure connections are not available in 'Tiny' mode! */
+  if (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
+    Serial.println(F("Failed!"));
+    while(1);
+  }
+   
+  Serial.println(F("Connected!"));
+  
+  /* Wait for DHCP to complete */
+  Serial.println(F("Request DHCP"));
+  while (!cc3000.checkDHCP()) {
+    delay(100); // ToDo: Insert a DHCP timeout!
+  }
+
+  /* Display the IP address DNS, Gateway, etc. */  
+  while (!displayConnectionDetails()) {
+    delay(1000);
+  }
+  
+  // Ok, we've connected - now create the UDP connetion to the broadcast address
+  Serial.println(F("\r\nAttempting connection..."));
+  unsigned long startTime = millis();
+  do {
+    client = cc3000.connectUDP(cc3000.IP2U32(172, 17, 1, 200), 55152);
+  } while((!client.connected()) &&
+          ((millis() - startTime) < 10000));
+  
+  if(!client.connected()) {
+    Serial.print("Couldn't connect UDP");
+    return;
+  }
+
 }
 
 // Main loop
@@ -319,12 +430,30 @@ void loop()
     Drift_correction();
     Euler_angles();
     
+    // Need to be consistent with debug output and the binary file.
+    unsigned long current_millis = millis();
     
+    Serial.print(current_millis); Serial.print(";");
     Serial.print(TO_DEG(yaw));    Serial.print(";");
     Serial.print(TO_DEG(pitch));  Serial.print(";");
     Serial.print(TO_DEG(roll));   Serial.print(";");
     Serial.print(temperature);    Serial.print(";");
     Serial.print(pressure);       Serial.print(";");
     Serial.print(altitude);       Serial.println();
+    
+    fileData.current_millis = current_millis;
+      
+    fileData.euler_Yaw = TO_DEG(yaw);
+    fileData.euler_Pitch = TO_DEG(pitch);
+    fileData.euler_Roll = TO_DEG(roll);
+      
+    fileData.temperature = temperature;
+    fileData.pressure = pressure;
+    fileData.altitude = altitude;
+      
+    // dataFile.write((byte *) &fileData, sizeof(fileData));
+    
+    client.write((byte *) &fileData, sizeof(fileData));
+
   }
 }

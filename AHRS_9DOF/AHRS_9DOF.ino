@@ -53,7 +53,7 @@
 // Sensor data output interval in milliseconds
 // This may not work, if faster than 20ms (=50Hz)
 // Code is tuned for 20ms, so better leave it like that
-#define OUTPUT_DATA_INTERVAL 20  // in milliseconds
+#define OUTPUT_DATA_INTERVAL 1000  // in milliseconds
 
 // tomn - adding CC3000
 #include <Adafruit_CC3000.h>
@@ -70,8 +70,8 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 
-#define WLAN_SSID       "WIFI_SSID"        // cannot be longer than 32 characters!
-#define WLAN_PASS       "WIFI_PASSWORD"
+#define WLAN_SSID       "Gisempleq"        // cannot be longer than 32 characters!
+#define WLAN_PASS       "What1100Ever1"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
 #define WLAN_SECURITY   WLAN_SEC_WPA2
 
@@ -397,7 +397,7 @@ void setup()
   Serial.println(F("\r\nAttempting connection..."));
   unsigned long startTime = millis();
   do {
-    client = cc3000.connectUDP(cc3000.IP2U32(172, 17, 1, 200), 55152);
+    client = cc3000.connectUDP(cc3000.IP2U32(172, 17, 1, 255), 55152);
   } while((!client.connected()) &&
           ((millis() - startTime) < 10000));
   
@@ -434,12 +434,13 @@ void loop()
     unsigned long current_millis = millis();
     
     Serial.print(current_millis); Serial.print(";");
-    Serial.print(TO_DEG(yaw));    Serial.print(";");
-    Serial.print(TO_DEG(pitch));  Serial.print(";");
-    Serial.print(TO_DEG(roll));   Serial.print(";");
-    Serial.print(temperature);    Serial.print(";");
-    Serial.print(pressure);       Serial.print(";");
-    Serial.print(altitude);       Serial.println();
+    //Serial.print(TO_DEG(yaw));    Serial.print(";");
+    //Serial.print(TO_DEG(pitch));  Serial.print(";");
+    //Serial.print(TO_DEG(roll));   Serial.print(";");
+    //Serial.print(temperature);    Serial.print(";");
+    //Serial.print(pressure);       Serial.print(";");
+    //Serial.print(altitude);       
+    Serial.println();
     
     fileData.current_millis = current_millis;
       
